@@ -166,34 +166,14 @@ jobs:
       - name: Build boot.img
         working-directory: android-kernel
         run: CCACHE="/usr/bin/ccache" BUILD_BOOT_IMG=1 SKIP_VENDOR_BOOT=1 KERNEL_BINARY=Image GKI_RAMDISK_PREBUILT_BINARY=out/ramdisk AVB_SIGN_BOOT_IMG=1 AVB_BOOT_PARTITION_SIZE=$((64*1024*1024)) AVB_BOOT_ALGORITHM=SHA256_RSA2048 AVB_BOOT_KEY=prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem BOOT_IMAGE_HEADER_VERSION=4 LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
-
-      - name: Build boot-gz.img
-        working-directory: android-kernel
-        run: |
-          cat out/${{ inputs.version }}/dist/Image | ./prebuilts/build-tools/path/linux-x86/gzip -n -f -9 > out/${{ inputs.version }}/dist/Image.gz
-          tools/mkbootimg/mkbootimg.py --header_version 4 --kernel ./out/${{ inputs.version }}/dist/Image.gz --ramdisk out/ramdisk --output ./out/${{ inputs.version }}/dist/boot-gz.img --os_version ${{ inputs.os_version }} --os_patch_level ${{ inputs.os_patch_level }}
-          ${{ env.AVBTOOL }} add_hash_footer --partition_name boot --partition_size $((64*1024*1024)) --image out/${{ inputs.version }}/dist/boot-gz.img --algorithm SHA256_RSA2048 --key ./prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
-      - name: Build boot-lz4_lg.img
-        working-directory: android-kernel
-        run: |
-          tools/mkbootimg/mkbootimg.py --header_version 4 --kernel ./out/${{ inputs.version }}/dist/Image.lz4 --ramdisk out/ramdisk --output ./out/${{ inputs.version }}/dist/boot-lz4_lg.img --os_version ${{ inputs.os_version }} --os_patch_level ${{ inputs.os_patch_level }}
-          ${{ env.AVBTOOL }} add_hash_footer --partition_name boot --partition_size $((64*1024*1024)) --image out/${{ inputs.version }}/dist/boot-lz4_lg.img --algorithm SHA256_RSA2048 --key ./prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
-      - name: Build boot-lz4_legacy.img
-        working-directory: android-kernel
-        run: |
-          cat ./out/${{ inputs.version }}/dist/Image | ./prebuilts/kernel-build-tools/linux-x86/bin/lz4 -l -12 --favor-decSpeed stdin stdout > ./out/${{ inputs.version }}/dist/Image.lz4-legacy
-          tools/mkbootimg/mkbootimg.py --header_version 4 --kernel ./out/${{ inputs.version }}/dist/Image.lz4-legacy --ramdisk out/ramdisk --output ./out/${{ inputs.version }}/dist/boot-lz4_legacy.img --os_version ${{ inputs.os_version }} --os_patch_level ${{ inputs.os_patch_level }}
-          ${{ env.AVBTOOL }} add_hash_footer --partition_name boot --partition_size $((64*1024*1024)) --image out/${{ inputs.version }}/dist/boot-lz4_legacy.img --algorithm SHA256_RSA2048 --key ./prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
-
+        
       - name: Prepare artifacts
         id: prepareArtifacts
         run: |
           OUTDIR=android-kernel/out/${{ inputs.version }}/dist
           cp $OUTDIR/Image.gz $OUTPUT_IMAGE_GZ
           zip $OUTPUT_BOOT -j -r $OUTDIR/boot.img
-          zip $OUTPUT_BOOT_GZ -j -r $OUTDIR/boot-gz.img
-          zip $OUTPUT_BOOT_LZ4_LG -j -r $OUTDIR/boot-lz4_lg.img
-          zip $OUTPUT_BOOT_LZ4_LEGACY -j -r $OUTDIR/boot-lz4_legacy.img
+          
       - name: Upload Image.gz
         uses: actions/upload-artifact@v3
         with:
@@ -205,21 +185,3 @@ jobs:
         with:
           name: ${{ inputs.version_name }}-boot.img
           path: ${{ env.OUTPUT_BOOT }}
-
-      - name: Upload boot-gz.img
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ inputs.version_name }}-boot-gz.img
-          path: ${{ env.OUTPUT_BOOT_GZ }}
-
-      - name: Upload boot-lz4_lg.img
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ inputs.version_name }}-boot-lz4_lg.img
-          path: ${{ env.OUTPUT_BOOT_LZ4_LG }}
-
-      - name: Upload boot-lz4_legacy.img
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ inputs.version_name }}-boot-lz4_legacy.img
-          path: ${{ env.OUTPUT_BOOT_LZ4_LEGACY }}
